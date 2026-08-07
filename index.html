@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>抗凝血停復藥計算機</title>
+<style>
+:root{
+  --ink:#16202b; --muted:#66717f; --line:#d3dae3; --bg:#fff; --panel:#f5f7fa;
+  --accent:#1b4f8a;
+  --ok:#e8f5ec; --ok-b:#7fb693;
+  --warn:#fff5e2; --warn-b:#e0b070;
+  --bad:#fdecec; --bad-b:#d08080;
+  --chip:#eef2f7;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:#eef1f5; color:var(--ink);
+  font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif;
+  font-size:15px; line-height:1.5; padding:12px 12px 60px;
+}
+.wrap{max-width:1000px;margin:0 auto}
+header{background:var(--accent);color:#fff;padding:11px 16px;border-radius:8px 8px 0 0}
+header h1{margin:0;font-size:19px;letter-spacing:.5px}
+.card{background:var(--bg);border:1px solid var(--line);border-top:none;padding:13px 16px}
+.card:last-of-type{border-radius:0 0 8px 8px}
+h2{font-size:13.5px;margin:0 0 9px;color:var(--accent);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+h2 .num{background:var(--accent);color:#fff;width:19px;height:19px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;flex:none}
+.row{display:flex;flex-wrap:wrap;gap:13px;align-items:flex-end}
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:11.5px;color:var(--muted);font-weight:700}
+input[type=date],input[type=number],input[type=text]{
+  font:inherit;font-size:15px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+input[type=number]{width:90px}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;padding:8px 16px;border:none;background:#fff;color:var(--ink);cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--accent);color:#fff;font-weight:700}
+.chk{display:inline-flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+  border-radius:6px;padding:9px 13px;cursor:pointer;font-size:14px;user-select:none}
+.chk.on{background:#e3edf8;border-color:var(--accent);font-weight:700;color:var(--accent)}
+.chk input{width:17px;height:17px;accent-color:var(--accent)}
+.risknote{margin-top:9px;padding:8px 11px;border-radius:5px;font-size:12.5px;border:1px solid}
+.risknote.high{background:var(--bad);border-color:var(--bad-b)}
+.risknote.low{background:var(--ok);border-color:var(--ok-b)}
+.risknote b{display:block;margin-bottom:2px}
+.hint{font-size:11.5px;color:var(--muted);margin:6px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 10px}
+.chip{font:inherit;font-size:13.5px;padding:6px 11px;border:1px solid var(--line);background:var(--chip);
+  border-radius:16px;cursor:pointer;color:var(--ink)}
+.chip:hover{border-color:var(--accent)}
+.chip.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+.catlab{font-size:11.5px;color:var(--muted);font-weight:700;margin:8px 0 3px}
+.tog{font:inherit;font-size:13px;padding:6px 13px;border:1px solid var(--accent);background:#fff;
+  color:var(--accent);border-radius:6px;cursor:pointer;font-weight:700}
+.sel{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:6px;padding:9px 12px;margin:7px 0;background:#fbfcfe}
+.sel .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sel .nm{font-weight:700;font-size:15px}
+.sel .rm{margin-left:auto;font:inherit;font-size:12px;padding:3px 10px;border:1px solid var(--line);
+  background:#fff;border-radius:5px;cursor:pointer;color:var(--muted)}
+.sel .rm:hover{border-color:var(--bad-b);color:#b03030}
+.vars{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.var{font:inherit;font-size:13px;padding:6px 11px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;text-align:left}
+.var.on{background:#e3edf8;border-color:var(--accent);font-weight:700;color:var(--accent)}
+.var small{display:block;font-weight:400;font-size:11px;color:var(--muted);margin-top:2px;max-width:330px}
+.var.on small{color:#3a6ea5}
+.box{border:1px solid var(--warn-b);background:var(--warn);padding:8px 11px;border-radius:5px;margin:8px 0;font-size:12.5px}
+.box.red{border-color:var(--bad-b);background:var(--bad)}
+.box.grn{border-color:var(--ok-b);background:var(--ok)}
+/* 總結 */
+.sum{border:2px solid var(--accent);background:#eef5fd;border-radius:7px;padding:10px 13px;margin:0 0 12px;font-size:14px}
+.sum .t{font-size:11.5px;color:var(--accent);font-weight:700;margin-bottom:5px}
+.sum .l{margin:3px 0}
+.sum b{font-size:17px}
+/* 結果卡 */
+.res{border:1px solid var(--line);border-radius:7px;margin:11px 0;overflow:hidden}
+.res .rh{background:var(--accent);color:#fff;padding:8px 12px;font-weight:700;font-size:15px;
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.res .rh span{font-weight:400;font-size:12px;opacity:.9}
+.body{padding:12px}
+.fgrid{display:flex;flex-wrap:wrap;gap:10px}
+.fbox{flex:1 1 190px;border:1px solid var(--line);border-radius:6px;padding:9px 12px;background:#fff}
+.fbox.stop{background:#fdf3f3;border-color:#e8bcbc}
+.fbox.go{background:#eef8f1;border-color:#a9d3b6}
+.fk{font-size:11.5px;color:var(--muted);font-weight:700}
+.fv{font-size:26px;font-weight:700;line-height:1.25;margin-top:2px}
+.fbox.stop .fv{color:#a02020}
+.fbox.go .fv{color:#1d7038}
+.fn{font-size:12px;color:var(--muted);margin-top:3px}
+.fbox.flat .fv{font-size:19px}
+.notes{margin-top:9px;font-size:12.5px;color:#4a5560}
+.notes div{margin:3px 0}
+.contra{color:#b02020;font-weight:700;font-size:20px;line-height:1.35}
+details.why{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+details.why summary{font-size:12.5px;color:var(--accent);cursor:pointer;user-select:none;font-weight:700}
+details.why .in{padding:8px 0 0;font-size:12.5px}
+details.why .in .r{margin:6px 0;padding-left:10px;border-left:3px solid var(--line)}
+details.why .in .r b{color:var(--accent)}
+details.spec{margin-top:9px}
+details.spec summary{font-size:12.5px;color:var(--accent);cursor:pointer;user-select:none;font-weight:700}
+.btn{font:inherit;font-size:14px;padding:9px 16px;border-radius:6px;border:1px solid var(--accent);
+  background:var(--accent);color:#fff;cursor:pointer;font-weight:700}
+.btn.ghost{background:#fff;color:var(--accent)}
+.empty{color:var(--muted);font-size:13.5px;padding:14px;text-align:center;background:var(--panel);border-radius:6px}
+.na{color:var(--muted);font-size:13.5px}
+.disc{font-size:11.5px;color:var(--muted);margin-top:13px;border-top:1px solid var(--line);padding-top:8px;line-height:1.6}
+@media(max-width:640px){ .fbox{flex:1 1 100%} body{padding:8px 8px 60px} }
+@media print{ body{background:#fff;padding:0} .noprint{display:none!important} .card,header{border:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header><h1>抗凝血停復藥計算機</h1></header>
+
+<!-- ① 手術與麻醉 -->
+<div class="card">
+  <h2><span class="num">1</span>手術與麻醉</h2>
+  <div class="row">
+    <div class="f"><label>手術日期</label><input type="date" id="opDate"></div>
+    <div class="f">
+      <label>手術出血風險</label>
+      <div class="seg" id="riskSeg">
+        <button data-v="low">中低出血風險</button>
+        <button data-v="high" class="on">高出血風險</button>
+      </div>
+    </div>
+    <div class="f">
+      <label>麻醉方式</label>
+      <label class="chk" id="naChk"><input type="checkbox" id="neuraxial"><span>半身麻醉／硬脊膜外／深層阻斷</span></label>
+    </div>
+  </div>
+  <div id="riskNote"></div>
+  <details class="spec">
+    <summary>▸ 特殊情形（需會診處方醫師／極低出血風險手術）</summary>
+    <div class="box red" style="margin-top:8px">
+      <b>下列情形請先會診處方醫師</b><br>
+      <b>CV</b> 近期（半年內）接受導管手術　│　<b>CVS</b> 機械瓣膜置換／3 個月內組織瓣膜置換或修補／曾接受瓣膜或心臟手術且因其他原因服用抗凝血藥<br>
+      <b>NEUR</b> 雙線抗血小板或抗血小板＋抗凝血劑／使用 warfarin／2 週內中風／3 個月內顱內外支架　│　<b>NS</b> 除非緊急手術，請於術前門診充分討論
+    </div>
+    <div class="box grn">
+      <b>極低出血風險手術</b>（30 天重大出血風險 0%，如白內障、小型皮膚科或小型牙科處置）：
+      高心血管或高栓塞風險病人接受此類手術時，<b>Aspirin 與 DOAC 術前可考慮不需停藥</b>；
+      若 INR 於治療範圍，建議<b>術前繼續使用 warfarin</b>。此時本工具算出的數字僅供上限參考。
+    </div>
+  </details>
+</div>
+
+<!-- ② 選藥 -->
+<div class="card">
+  <h2><span class="num">2</span>選擇病人正在服用的藥物<span style="font-size:11.5px;font-weight:400;color:var(--muted)">（可複選）</span></h2>
+  <div id="pickArea"></div>
+  <div id="selArea"></div>
+</div>
+
+<!-- ③ 病人資料（只在需要時出現） -->
+<div class="card" id="ptCard" style="display:none">
+  <h2><span class="num">3</span>病人資料<span id="needTag" style="font-size:11.5px;font-weight:400;color:#b02020"></span></h2>
+  <div id="ptRenal" style="display:none">
+    <div class="row">
+      <div class="f"><label>年齡（歲）</label><input type="number" id="age" min="0" max="120" placeholder="—"></div>
+      <div class="f"><label>體重（kg）</label><input type="number" id="wt" min="0" max="250" step="0.5" placeholder="—"></div>
+      <div class="f"><label>性別</label><div class="seg" id="sexSeg"><button data-v="M" class="on">男</button><button data-v="F">女</button></div></div>
+      <div class="f"><label>Cr（mg/dL）</label><input type="number" id="cr" min="0" max="20" step="0.1" placeholder="—"></div>
+      <div class="f"><label>CrCl（mL/min）可直接填</label><input type="number" id="crcl" min="0" max="250" step="1" placeholder="自動計算"></div>
+    </div>
+    <p class="hint" id="crclNote"></p>
+  </div>
+  <div id="ptInr" style="display:none;margin-top:10px">
+    <div class="row"><div class="f"><label>INR</label><input type="number" id="inr" min="0" max="12" step="0.1" placeholder="—"></div></div>
+  </div>
+</div>
+
+<!-- ④ 結果 -->
+<div class="card">
+  <h2><span class="num">4</span>建議停藥／復藥時間</h2>
+  <div id="resArea"><div class="empty">請先選擇手術日期與藥物。</div></div>
+  <div class="noprint" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn" id="copyBtn">📋 複製成文字（可貼病歷）</button>
+    <button class="btn ghost" id="clearBtn">清除全部</button>
+  </div>
+  <p class="disc">
+  以「天」為單位的術前停藥<b>手術當天不算</b>；範圍值一律取<b>最保守（最長）</b>。以「小時」為單位者，以手術當天
+  <b>早上 8:00 開始麻醉／置針、中午 12:00 結束並止血良好</b>估算。要打半麻／深層阻斷時，取兩者<b>較長者</b>。<br>
+  <b>所有時間為最短等待時間</b>；高齡、腎功能不全、多重抗凝併用、血性穿刺時應再延長。是否停藥須同時衡量停藥後的栓塞風險。
+  本工具為臨床輔助，<b>所有臨床決策仍以主責醫師之判斷為準</b>。<br>
+  <span style="color:#98a1ac">版本 2026-08-07b　│　桌面與雲端資料夾各有一份，版本日期應相同；不同時以雲端資料夾那份為準。</span>
+  </p>
+</div>
+
+</div>
+
+<script>
+/* ===================== 常數 ===================== */
+const $ = id => document.getElementById(id);
+const H = h => h;
+const WD = ['日','一','二','三','四','五','六'];
+const START_H = 8,  START_M = 0;    // 麻醉開始／置針
+const END_H   = 12, END_M   = 0;    // 手術結束、止血良好
+const CAT_ORDER = ['抗血小板','DOAC','Warfarin','注射型','NSAID／中草藥'];
+
+const RISK_INFO = {
+  high:{cls:'high', t:'高出血風險手術',
+    d:'30 天重大出血風險 <b>≥ 2%</b>，或出血發生在無法壓迫／封閉腔室而後果嚴重。常見：顱內與脊椎神經外科、心臟與大血管手術、大範圍腫瘤切除、肝／胰／膽大手術、泌尿科 TURP 與腎臟切片、大關節置換等大骨科手術、眼球後房手術，以及任何預期無法壓迫止血者。'},
+  low:{cls:'low', t:'中低出血風險手術',
+    d:'30 天重大出血風險 <b>&lt; 2%</b>，且出血可壓迫、後果可控。常見：多數腹腔鏡手術、疝氣修補、膽囊切除、乳房手術、小型骨科處置、不含切片或息肉切除之內視鏡、拔牙與小型皮膚手術。'}
+};
+
+/* spec：{d:天數} 或 {h:小時}；dShort/hShort＝範圍較短端；
+   復藥 {h:最早, hMax:最晚}；kind: none/continue/contra/unknown；note＝臨床判斷用註記 */
+const NONE   = t => ({kind:'none', text:t||'不需停藥'});
+const CONTRA = (t) => ({kind:'contra', text:t||'建議不執行'});
+const UNK    = t => ({kind:'unknown', text:t||'未有明確建議'});
+
+/* 三個 Xa 抑制劑共用同一組術前停用時間 */
+function xaStopLow(ctx){
+  const c = ctx.crcl;
+  if(c==null) return {h:H(24), note:'未填腎功能，先以 ClCr ≥30 呈現（ClCr 15–29 應為 36 小時）'};
+  if(c>=30)   return {h:H(24), note:'ClCr ≥30 mL/min'};
+  if(c>=15)   return {h:H(36), note:'ClCr 15–29 mL/min'};
+  return {h:H(36), note:'ClCr <15，已取最長值，請個案判斷'};
+}
+const XA_STOP_HIGH = {h:H(48)};
+const XA_RES_LOW   = {h:H(24)};
+const XA_RES_HIGH  = {h:H(48), hMax:H(72)};
+
+/* ===================== 藥物資料表 ===================== */
+const DRUGS = [
+/* ---------- 抗血小板（最常用，放最前） ---------- */
+{
+  id:'aspirin', name:'Aspirin', brand:'Bokey', alias:'aspirin asa bokey aspro 阿斯匹靈 伯基', cat:'抗血小板',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{d:7, dShort:3}, stopHigh:{d:10, dShort:7},
+             resumeLow:{h:0, hMax:H(48)}, resumeHigh:{h:0, hMax:H(48)}},
+    neuraxial:{stop:NONE('不需停藥'), resume:NONE('無時間限制'), catheter:'可留置',
+      extra:'NSAIDs（含 aspirin）不會造成足以干擾執行 neuraxial 或深層阻斷的風險程度。例外：① 介入性疼痛處置 ② 與 UFH／LMWH／口服抗凝或溶栓藥併用時'}}]
+},
+{
+  id:'clopidogrel', name:'Clopidogrel', brand:'Plavix', alias:'clopidogrel plavix 保栓通', cat:'抗血小板',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{d:5}, stopHigh:{d:5},
+             resumeLow:{h:H(24), hMax:H(48), note:'高栓塞風險可於術後 4–6 小時開始，並考慮 loading dose'},
+             resumeHigh:{h:H(24), hMax:H(48), note:'高栓塞風險可於術後 4–6 小時開始，並考慮 loading dose'}},
+    neuraxial:{stop:{h:H(168), hShort:H(120)},
+               resume:{h:0, note:'立即；若給 loading dose 則距拔管 6 小時'},
+               catheter:'可留 1–2 天，前提是不給 loading dose',
+               extra:'⚠ 若病人有神經阻斷導管留置中，一律不可給 loading dose'}}]
+},
+{
+  id:'ticagrelor', name:'Ticagrelor', brand:'Brilinta', alias:'ticagrelor brilinta 百無凝', cat:'抗血小板',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{d:5, dShort:3}, stopHigh:{d:5, dShort:3},
+             resumeLow:{h:H(24), hMax:H(48), note:'高栓塞風險考慮 loading dose'},
+             resumeHigh:{h:H(24), hMax:H(48), note:'高栓塞風險考慮 loading dose'}},
+    neuraxial:{stop:{h:H(120)}, resume:{h:0, note:'立即；若給 loading dose 則 6 小時'},
+               catheter:'不可留置（起效快）'}}]
+},
+{
+  id:'prasugrel', name:'Prasugrel', brand:'Effient', alias:'prasugrel effient', cat:'抗血小板',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{d:7}, stopHigh:{d:7},
+             resumeLow:{h:H(24), hMax:H(48), note:'高栓塞風險考慮 loading dose'},
+             resumeHigh:{h:H(24), hMax:H(48), note:'高栓塞風險考慮 loading dose'}},
+    neuraxial:{stop:{h:H(240), hShort:H(168)}, resume:{h:0, note:'立即；若給 loading dose 則 6 小時'},
+               catheter:'不可留置（起效快）'}}]
+},
+{
+  id:'ticlopidine', name:'Ticlopidine', brand:'Ticlid', alias:'ticlopidine ticlid', cat:'抗血小板',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{d:14, dShort:10}, stopHigh:{d:14, dShort:10}, resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:{h:H(240)}, resume:{h:0, note:'立即'},
+               catheter:'可留 1–2 天，不給 loading dose'}}]
+},
+{
+  id:'cilostazol', name:'Cilostazol', brand:'Pletaal', alias:'cilostazol pletaal 普達', cat:'抗血小板',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{d:3, dShort:2}, stopHigh:{d:3, dShort:2}, resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:{h:H(48)}, resume:{h:H(6), note:'術後首劑距拔管 6 小時'},
+               catheter:'不可留置；恢復用藥前先拔管'}}]
+},
+{
+  id:'dipyridamole', name:'Dipyridamole', brand:'Persantin', alias:'dipyridamole persantin', cat:'抗血小板',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{d:2}, stopHigh:{d:2}, resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:{h:H(24), note:'緩釋劑型'}, resume:{h:H(6), note:'術後首劑距拔管 6 小時'},
+               catheter:'不可留置；恢復用藥前先拔管'}}]
+},
+{
+  id:'cangrelor', name:'Cangrelor', brand:'Kengreal', alias:'cangrelor kengreal kengrexal', cat:'抗血小板',
+  variants:[{id:'std', label:'', desc:'靜脈注射型 P2Y12 抑制劑',
+    surgery:{stopLow:UNK(), stopHigh:UNK(), resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:{h:H(3), note:'宜更長'}, resume:{h:H(8), note:'術後首劑距拔管 8 小時'},
+               catheter:'不可留置；恢復用藥前先拔管'}}]
+},
+{
+  id:'tirofiban', name:'Tirofiban／Eptifibatide', brand:'Aggrastat／Integrilin', alias:'tirofiban eptifibatide aggrastat integrilin gp2b3a', cat:'抗血小板',
+  variants:[{id:'std', label:'', desc:'GP IIb/IIIa 抑制劑',
+    surgery:{stopLow:{h:H(6), hShort:H(4)}, stopHigh:{h:H(6), hShort:H(4)},
+             resumeLow:{h:H(4), hMax:H(6)}, resumeHigh:{h:H(4), hMax:H(6)}},
+    neuraxial:{stop:{h:H(8), hShort:H(4), note:'等血小板功能恢復'},
+               resume:CONTRA('術後 4 週內為禁忌'), catheter:'禁止留置'}}]
+},
+{
+  id:'abciximab', name:'Abciximab', brand:'ReoPro', alias:'abciximab reopro gp2b3a', cat:'抗血小板',
+  variants:[{id:'std', label:'', desc:'GP IIb/IIIa 抑制劑',
+    surgery:{stopLow:UNK(), stopHigh:UNK(), resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:{h:H(48), hShort:H(24), note:'等血小板功能恢復'},
+               resume:CONTRA('術後 4 週內為禁忌'), catheter:'禁止留置'}}]
+},
+/* ---------- DOAC ---------- */
+{
+  id:'apixaban', name:'Apixaban', brand:'Eliquis', alias:'apixaban eliquis 艾必克凝', cat:'DOAC', needCrCl:true,
+  warn:'⚠ Apixaban 2.5 mg BID 不一定是低劑量 —— 非瓣膜性心房顫動且符合〔年齡≥80／體重&lt;60kg／Cr≥1.5〕其中<b>兩項</b>者屬<b>高劑量</b>（阻斷前停 72 小時）。用於復發性 DVT／PE 預防、或髖／膝置換術後預防才是低劑量（停 36 小時）。<b>看適應症，不是看毫克數。</b>',
+  variants:[
+    {id:'hi', label:'高劑量', desc:'5 mg BID；或 AF 且符合減量條件的 2.5 mg BID',
+     surgery:{stopLow:xaStopLow, stopHigh:XA_STOP_HIGH, resumeLow:XA_RES_LOW, resumeHigh:XA_RES_HIGH},
+     neuraxial:{stop:{h:H(72)}, resume:{h:H(24)}, catheter:'不建議留置導管（全部 DOAC）',
+                extra:'導管留置中意外給藥：停 ≥72 小時或濃度達標（<30 ng/mL 或 anti-Xa ≤0.1 IU/mL）'}},
+    {id:'lo', label:'低劑量 2.5 mg BID', desc:'用於復發性 DVT／PE 預防、髖／膝置換術後預防',
+     surgery:{stopLow:xaStopLow, stopHigh:XA_STOP_HIGH, resumeLow:XA_RES_LOW, resumeHigh:XA_RES_HIGH},
+     neuraxial:{stop:{h:H(36)}, resume:{h:H(6)}, catheter:'不建議留置導管（全部 DOAC）',
+                extra:'導管留置中意外給藥：停 ≥36 小時或濃度達標'}}
+  ]
+},
+{
+  id:'rivaroxaban', name:'Rivaroxaban', brand:'Xarelto', alias:'rivaroxaban xarelto 拜瑞妥', cat:'DOAC', needCrCl:true,
+  variants:[
+    {id:'hi', label:'高劑量 15–20 mg QD', desc:'AF 或 VTE 治療劑量',
+     surgery:{stopLow:xaStopLow, stopHigh:XA_STOP_HIGH, resumeLow:XA_RES_LOW, resumeHigh:XA_RES_HIGH},
+     neuraxial:{stop:{h:H(72)}, resume:{h:H(24)}, catheter:'不建議留置導管（全部 DOAC）',
+                extra:'導管留置中意外給藥：停 ≥72 小時或濃度達標'}},
+    {id:'lo', label:'低劑量 10 mg QD', desc:'VTE 預防／延長治療',
+     surgery:{stopLow:ctx=>{const s=xaStopLow(ctx); return {h:s.h, note:'10 mg/day 取較保守值。'+(s.note||'')};},
+              stopHigh:{h:H(48), note:'10 mg/day 取較保守值'},
+              resumeLow:XA_RES_LOW, resumeHigh:XA_RES_HIGH},
+     neuraxial:{stop:ctx=>(ctx.crcl!=null&&ctx.crcl<30)?{h:H(30), note:'CrCl <30'}
+                  :{h:H(24), note:ctx.crcl==null?'CrCl <30 時須延長為 ≥30 小時':''},
+                resume:{h:H(6)}, catheter:'不建議留置導管（全部 DOAC）',
+                extra:'導管留置中意外給藥：停 ≥24 小時（CrCl<30 為 30 小時）或濃度達標'}},
+    {id:'vlo', label:'2.5 mg BID ＋ aspirin', desc:'CAD／PAD 之血管保護劑量',
+     surgery:{stopLow:{h:H(12)}, stopHigh:{h:H(12)}, resumeLow:XA_RES_LOW, resumeHigh:XA_RES_HIGH},
+     neuraxial:{stop:ctx=>(ctx.crcl!=null&&ctx.crcl<30)?{h:H(30), note:'CrCl <30'}
+                  :{h:H(24), note:ctx.crcl==null?'CrCl <30 時須延長為 ≥30 小時':''},
+                resume:{h:H(6)}, catheter:'不建議留置導管（全部 DOAC）',
+                extra:'⚠ 併用 aspirin 屬多重抗栓，會增加自發性出血、穿刺部位出血與脊髓血腫風險'}}
+  ]
+},
+{
+  id:'edoxaban', name:'Edoxaban', brand:'Lixiana', alias:'edoxaban lixiana 里先安', cat:'DOAC', needCrCl:true,
+  variants:[
+    {id:'hi', label:'高劑量 30–60 mg QD', desc:'',
+     surgery:{stopLow:xaStopLow, stopHigh:XA_STOP_HIGH, resumeLow:XA_RES_LOW, resumeHigh:XA_RES_HIGH},
+     neuraxial:{stop:{h:H(72)}, resume:{h:H(24)}, catheter:'不建議留置導管（全部 DOAC）',
+                extra:'導管留置中意外給藥：停 ≥72 小時或濃度達標'}},
+    {id:'lo', label:'低劑量', desc:'美國 FDA 無核准之低劑量適應症',
+     surgery:{stopLow:xaStopLow, stopHigh:XA_STOP_HIGH, resumeLow:XA_RES_LOW, resumeHigh:XA_RES_HIGH},
+     neuraxial:{stop:UNK('無核准之低劑量適應症，未給時間'), resume:UNK('—'),
+                catheter:'不建議留置導管（全部 DOAC）'}}
+  ]
+},
+{
+  id:'dabigatran', name:'Dabigatran', brand:'Pradaxa', alias:'dabigatran pradaxa 普栓達', cat:'DOAC', needCrCl:true,
+  variants:[
+    {id:'hi', label:'高劑量', desc:'110／150 mg BID（AF、VTE 治療）',
+     surgery:{
+       stopLow:ctx=>{ const c=ctx.crcl;
+         if(c==null) return {h:H(48), note:'未填腎功能，已取最保守值（ClCr ≥80→24／50–79→36／30–49→48 小時）'};
+         if(c>=80) return {h:H(24), note:'ClCr ≥80 mL/min'};
+         if(c>=50) return {h:H(36), note:'ClCr 50–79 mL/min'};
+         if(c>=30) return {h:H(48), note:'ClCr 30–49 mL/min'};
+         return {h:H(48), note:'ClCr <30，已取最長值，請個案判斷'}; },
+       stopHigh:ctx=>{ const c=ctx.crcl;
+         if(c==null) return {h:H(96), note:'未填腎功能，已取最保守值（ClCr ≥80→48／50–79→72／30–49→96 小時）'};
+         if(c>=80) return {h:H(48), note:'ClCr ≥80 mL/min'};
+         if(c>=50) return {h:H(72), note:'ClCr 50–79 mL/min'};
+         if(c>=30) return {h:H(96), note:'ClCr 30–49 mL/min'};
+         return {h:H(96), note:'ClCr <30，已取最長值，請個案判斷'}; },
+       resumeLow:{h:H(24)}, resumeHigh:{h:H(48), hMax:H(72)}},
+     neuraxial:{
+       stop:ctx=>{ const c=ctx.crcl;
+         if(c!=null&&c<30) return CONTRA('CrCl <30：建議不執行 neuraxial 或深層阻斷，除非已測得 dabigatran 濃度 <30 ng/mL');
+         if(c==null) return {h:H(120), note:'未填腎功能，已取最保守值（CrCl ≥50→72／30–49→120 小時；<30 建議不執行）'};
+         if(c>=50) return {h:H(72), note:'CrCl ≥50'};
+         return {h:H(120), note:'CrCl 30–49'}; },
+       resume:{h:H(24)}, catheter:'不建議留置導管（全部 DOAC）',
+       extra:'導管留置中意外給藥：停 ≥72 小時（CrCl 30–49 為 120 小時）或 dTT 濃度 <30 ng/mL。PT／INR／aPTT 一律不可用於判讀'}},
+    {id:'lo', label:'低劑量', desc:'預防劑量',
+     surgery:{stopLow:ctx=>{const c=ctx.crcl;
+                if(c==null) return {h:H(48), note:'比照高劑量取值；未填腎功能，已取最保守值'};
+                if(c>=80) return {h:H(24), note:'ClCr ≥80；比照高劑量取值'};
+                if(c>=50) return {h:H(36), note:'ClCr 50–79；比照高劑量取值'};
+                return {h:H(48), note:'ClCr <50；比照高劑量取值'};},
+              stopHigh:ctx=>{const c=ctx.crcl;
+                if(c==null) return {h:H(96), note:'比照高劑量取值；未填腎功能，已取最保守值'};
+                if(c>=80) return {h:H(48), note:'ClCr ≥80；比照高劑量取值'};
+                if(c>=50) return {h:H(72), note:'ClCr 50–79；比照高劑量取值'};
+                return {h:H(96), note:'ClCr <50；比照高劑量取值'};},
+              resumeLow:{h:H(24)}, resumeHigh:{h:H(48), hMax:H(72)}},
+     neuraxial:{stop:ctx=>(ctx.crcl!=null&&ctx.crcl<30)
+                  ?CONTRA('CrCl <30：建議不執行 neuraxial 或深層阻斷，除非已測得 dabigatran 濃度 <30 ng/mL')
+                  :{h:H(48)},
+                resume:{h:H(6)}, catheter:'不建議留置導管（全部 DOAC）',
+                extra:'導管留置中意外給藥：停 ≥48 小時或濃度 <30 ng/mL'}}
+  ]
+},
+/* ---------- Warfarin ---------- */
+{
+  id:'warfarin', name:'Warfarin', brand:'Coumadin', alias:'warfarin coumadin 可邁丁 香豆素', cat:'Warfarin', needINR:true,
+  variants:[
+    {id:'std', label:'', desc:'',
+     surgery:{
+       /* 術前停藥不分出血風險，兩欄相同，依 INR 判斷 */
+       stopLow:ctx=>{ const i=ctx.inr;
+         if(i==null) return {d:5, note:'未填 INR，已取最保守值（INR ≤2→3–4 天；2–3→5 天；≥3→至少 5 天）'};
+         if(i<=2) return {d:4, dShort:3, note:'INR ≤ 2'};
+         if(i<3)  return {d:5, note:'INR 2–3'};
+         return {d:5, note:'INR ≥ 3.0，原文為「至少 5 天」，必要時再延長'}; },
+       stopHigh:ctx=>{ const i=ctx.inr;
+         if(i==null) return {d:5, note:'未填 INR，已取最保守值（INR ≤2→3–4 天；2–3→5 天；≥3→至少 5 天）。術前停藥不分出血風險'};
+         if(i<=2) return {d:4, dShort:3, note:'INR ≤ 2。術前停藥不分出血風險'};
+         if(i<3)  return {d:5, note:'INR 2–3。術前停藥不分出血風險'};
+         return {d:5, note:'INR ≥ 3.0，原文為「至少 5 天」，必要時再延長。術前停藥不分出血風險'}; },
+       resumeLow:NONE('持續服用（止血良好後即可接回，無等待）'),
+       resumeHigh:{h:0, hMax:H(24)}},
+     neuraxial:{stop:{d:5, note:'且 INR 需回到當地檢驗室正常範圍'},
+                resume:UNK('未訂術後首劑時間'),
+                catheter:'低劑量 warfarin 可留置，但須每日測 INR、常規感覺／運動神經學檢查、配方調成最低阻斷',
+                extra:'拔管門檻 INR <1.5；INR 1.5–3 且導管留置＝風險未知，可續留或小心拔除；INR >3 且導管留置 → 停用或減量 warfarin。拔管後神經學評估持續 ≥48 小時'}}
+  ],
+  foot:'術前 24 小時檢測 INR，&lt;1.5 再進行手術。'
+},
+/* ---------- 注射型 ---------- */
+{
+  id:'ufh_iv', name:'Heparin（IV，UFH）', brand:'', alias:'heparin ufh iv 肝素', cat:'注射型',
+  variants:[{id:'std', label:'', desc:'靜脈輸注全量抗凝',
+    surgery:{stopLow:{h:H(6), hShort:H(4)}, stopHigh:{h:H(6), hShort:H(4)},
+             resumeLow:{h:H(24), note:'therapeutic dose'}, resumeHigh:{h:H(48), hMax:H(72), note:'therapeutic dose'}},
+    neuraxial:{stop:{h:H(6), hShort:H(4), note:'另需確認凝血正常'}, resume:{h:H(1), note:'置針後 ≥1 小時'},
+               catheter:'可留置',
+               extra:'拔管：末次劑量後 4–6 小時＋評估凝血；拔管後 1 小時可再肝素化。UFH 使用 >4 天 → 置針或拔管前必驗血小板。心臟手術／體外循環全量抗凝下不建議執行 neuraxial 或留置導管'}}]
+},
+{
+  id:'ufh_sc', name:'Heparin（皮下，UFH）', brand:'', alias:'heparin ufh sc subcut 皮下肝素', cat:'注射型',
+  variants:[
+    {id:'lo', label:'低劑量 5,000 U BID／TID', desc:'',
+     surgery:{stopLow:{h:H(6), hShort:H(4), note:'比照 IV 取值'}, stopHigh:{h:H(6), hShort:H(4), note:'比照 IV 取值'},
+              resumeLow:{h:H(24), note:'therapeutic dose'}, resumeHigh:{h:H(48), hMax:H(72)}},
+     neuraxial:{stop:{h:H(6), hShort:H(4), note:'或確認凝血正常'},
+                resume:{h:H(1), note:'置針後 1 小時；拔管後可立即給藥'}, catheter:'可留置',
+                extra:'拔管：末次劑量後 ≥4–6 小時。UFH 使用 >4 天 → 置針或拔管前必驗血小板'}},
+    {id:'mid', label:'中劑量 7,500–10,000 U BID', desc:'或每日 ≤20,000 U',
+     surgery:{stopLow:UNK(), stopHigh:UNK(), resumeLow:{h:H(24)}, resumeHigh:{h:H(48), hMax:H(72)}},
+     neuraxial:{stop:{h:H(12), note:'另需 aPTT 正常'}, resume:UNK(), catheter:'安全性未確立'}},
+    {id:'hi', label:'高劑量 >10,000 U/劑', desc:'或每日 >20,000 U',
+     surgery:{stopLow:UNK(), stopHigh:UNK(), resumeLow:{h:H(24)}, resumeHigh:{h:H(48), hMax:H(72)}},
+     neuraxial:{stop:{h:H(24), note:'另需 aPTT 正常'}, resume:UNK(),
+                catheter:'安全性未確立，須加強神經學監測'}}
+  ]
+},
+{
+  id:'enoxaparin', name:'Enoxaparin（LMWH）', brand:'Clexane', alias:'enoxaparin clexane lmwh 依諾', cat:'注射型',
+  variants:[
+    {id:'lo', label:'預防（低）劑量', desc:'enoxaparin 40 mg QD／30 mg q12h',
+     surgery:{stopLow:{h:H(24)}, stopHigh:{h:H(24)},
+              resumeLow:{h:H(24), hMax:H(72), note:'low dose'}, resumeHigh:{h:H(24), hMax:H(72), note:'low dose'}},
+     neuraxial:{stop:{h:H(12), note:'若 <12 小時可驗 anti-Xa，建議 ≤0.1 IU/mL'},
+                resume:{h:H(12), note:'術後首劑距置針 ≥12 小時'},
+                catheter:'低劑量「一日一次」可留置；「一日兩次」不建議留置',
+                extra:'術後 QD：第二劑距第一劑 ≥24 小時；拔管在末次劑量後 12 小時；拔管後 ≥4 小時給下一劑。術後 BID：第一劑於隔天且距置針 ≥12 小時，開始 LMWH 前導管須先拔除，拔管後延後 4 小時給藥。導管留置期間不得併用任何其他影響止血的藥物。CrCl 由 30–49 降至 <30 → 最後一劑減半'}},
+    {id:'hi', label:'治療（高）劑量', desc:'1 mg/kg q12h／1.5 mg/kg QD',
+     surgery:{stopLow:{h:H(24)}, stopHigh:{h:H(24)},
+              resumeLow:{h:H(24), note:'therapeutic dose'}, resumeHigh:{h:H(48), hMax:H(72), note:'therapeutic dose'}},
+     neuraxial:{stop:{h:H(24), note:'<24 小時可驗 anti-Xa，尤其 >75 歲或 CrCl ≤30。末次高劑量後 24 小時仍有 18–60% 病人 aXa 高於預期，降至 <0.2 IU/mL 平均需 31.5 小時'},
+                resume:{h:H(24), note:'導管須於首劑前 4 小時拔除，且首劑距置針 ≥24 小時，取較長者'},
+                catheter:'不建議留置',
+                extra:'導管留置期間不得併用任何其他影響止血的藥物。血性穿刺：不需取消手術，LMWH 延後 24 小時再開始'}}
+  ]
+},
+{
+  id:'fondaparinux', name:'Fondaparinux', brand:'Arixtra', alias:'fondaparinux arixtra', cat:'注射型', needCrCl:true, needAge:true,
+  variants:[
+    {id:'lo', label:'低劑量 2.5 mg QD', desc:'',
+     surgery:{stopLow:{h:H(24)}, stopHigh:{h:H(24)}, resumeLow:{h:H(8)}, resumeHigh:{h:H(8)}},
+     neuraxial:{stop:ctx=>{ const c=ctx.crcl, old=(ctx.age!=null&&ctx.age>=65);
+         if(c!=null&&c<30) return CONTRA('CrCl <30：建議不執行阻斷（亦為 fondaparinux 使用禁忌）');
+         if(c!=null&&c<50) return {h:H(58), note:'CrCl 30–50'};
+         if(ctx.age==null) return {h:H(42), note:'未填年齡，已取最保守值（<65 歲 36 小時／≥65 歲 42 小時）'};
+         return old?{h:H(42), note:'≥65 歲'}:{h:H(36), note:'<65 歲'}; },
+       resume:{h:H(6), note:'拔管距術後首劑 ≥6 小時'},
+       catheter:'半衰期長，宜避免留置',
+       extra:'半衰期：年輕 17h、年長 21h、CrCl 30–50 為 29h、CrCl <30 為 72h。提前置針可驗 fondaparinux 專屬校正之 anti-Xa ≤0.1 IU/mL。禁忌：CrCl <30、體重 <50 kg；protamine 無效'}},
+    {id:'hi', label:'高劑量 5–10 mg QD', desc:'',
+     surgery:{stopLow:{h:H(24)}, stopHigh:{h:H(24)}, resumeLow:{h:H(8)}, resumeHigh:{h:H(8)}},
+     neuraxial:{stop:ctx=>{ const c=ctx.crcl, old=(ctx.age!=null&&ctx.age>=65);
+         if(c!=null&&c<30) return CONTRA('CrCl <30：fondaparinux 禁忌，建議不執行阻斷');
+         if(ctx.age==null) return {h:H(105), note:'未填年齡，已取最保守值（<65 歲 70 小時／≥65 歲 105 小時）'};
+         return old?{h:H(105), note:'≥65 歲'}:{h:H(70), note:'<65 歲'}; },
+       resume:{h:H(6), note:'拔管距術後首劑 ≥6 小時'},
+       catheter:'半衰期長，宜避免留置', extra:'禁忌：CrCl <30、體重 <50 kg'}}
+  ]
+},
+{
+  id:'dti', name:'Argatroban／Bivalirudin／Desirudin', brand:'', alias:'argatroban bivalirudin desirudin dti hit angiomax', cat:'注射型',
+  variants:[{id:'std', label:'', desc:'直接凝血酶抑制劑，多用於 HIT',
+    surgery:{stopLow:UNK(), stopHigh:UNK(), resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:CONTRA('建議不執行 neuraxial 技術'), resume:CONTRA('—'), catheter:'不建議留置',
+               extra:'無反轉劑；主要用於 HIT，本質上就需維持治療濃度抗凝'}}]
+},
+{
+  id:'thrombolytic', name:'溶栓／纖溶藥物', brand:'', alias:'thrombolytic tpa alteplase urokinase streptokinase 溶栓', cat:'注射型',
+  variants:[{id:'std', label:'', desc:'t-PA、urokinase 等',
+    surgery:{stopLow:UNK(), stopHigh:UNK(), resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:{h:H(48), note:'另需記錄凝血（含 fibrinogen）已正常'},
+               resume:UNK('未訂術後首劑時間'), catheter:'不建議留置',
+               extra:'不可壓迫血管穿刺後 10 天內避免使用溶栓藥。神經學監測每 2 小時 × ≥48 小時'}}]
+},
+/* ---------- NSAID／中草藥 ---------- */
+{
+  id:'nsaid', name:'NSAIDs（多數）', brand:'', alias:'nsaid nsaids diclofenac naproxen meloxicam 非類固醇', cat:'NSAID／中草藥',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{d:3}, stopHigh:{d:3}, resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:NONE('不需停藥'), resume:NONE('無時間限制'), catheter:'可留置',
+      extra:'與 UFH／LMWH／口服抗凝或溶栓藥併用時例外，會增加出血風險'}}]
+},
+{
+  id:'ibuprofen', name:'Ibuprofen', brand:'', alias:'ibuprofen 布洛芬', cat:'NSAID／中草藥',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{h:H(24)}, stopHigh:{h:H(24)}, resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:NONE('不需停藥'), resume:NONE('無時間限制'), catheter:'可留置'}}]
+},
+{
+  id:'cox2', name:'COX-2 inhibitors', brand:'Celebrex／Arcoxia', alias:'cox2 celecoxib etoricoxib arcoxia celebrex', cat:'NSAID／中草藥',
+  variants:[{id:'std', label:'', desc:'celecoxib、etoricoxib 等',
+    surgery:{stopLow:NONE('有使用需求者可不停藥'), stopHigh:NONE('有使用需求者可不停藥'), resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:NONE('不需停藥'), resume:NONE('無時間限制'), catheter:'可留置'}}]
+},
+{
+  id:'ginkgo', name:'Ginkgo biloba（銀杏）', brand:'', alias:'ginkgo 銀杏', cat:'NSAID／中草藥',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{h:H(36)}, stopHigh:{h:H(36)}, resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:NONE('不需為手術或麻醉強制停藥，也不應因此避免區域麻醉'), resume:NONE('無時間限制'), catheter:'可留置',
+      extra:'僅供了解藥理的參考時間：ginkgo 36 小時。與口服抗凝或肝素併用時資料不足，仍應提高警覺'}}]
+},
+{
+  id:'garlic', name:'Garlic（大蒜）／Ginseng（人參）', brand:'', alias:'garlic ginseng 大蒜 人參', cat:'NSAID／中草藥',
+  variants:[{id:'std', label:'', desc:'',
+    surgery:{stopLow:{d:7}, stopHigh:{d:7}, resumeLow:UNK(), resumeHigh:UNK()},
+    neuraxial:{stop:NONE('不需為手術或麻醉強制停藥，也不應因此避免區域麻醉'), resume:NONE('無時間限制'), catheter:'可留置',
+      extra:'僅供了解藥理的參考時間：garlic 7 天、ginseng 24 小時'}}]
+}
+];
+
+/* ===================== 狀態 ===================== */
+const S = { risk:'high', sex:'M', selected:{}, chipsOpen:true, userOpened:false, q:'' };
+function dname(d){ return d.brand ? d.name+'／'+d.brand : d.name; }
+
+/* ===================== 計算 ===================== */
+function numOr(v){ if(v===''||v==null) return null; const n=parseFloat(v); return isNaN(n)?null:n; }
+function ctx(){
+  const age=numOr($('age').value), wt=numOr($('wt').value), cr=numOr($('cr').value);
+  let crcl=numOr($('crcl').value), auto=null;
+  if(crcl==null && age!=null && wt!=null && cr!=null && cr>0){
+    auto=((140-age)*wt)/(72*cr)*(S.sex==='F'?0.85:1);
+    crcl=Math.round(auto*10)/10;
+  }
+  return {age, wt, cr, crcl, auto, inr:numOr($('inr').value), risk:S.risk, sex:S.sex};
+}
+function res(v,c){ return (typeof v==='function') ? v(c) : v; }
+function anchors(){
+  const d=$('opDate').value; if(!d) return null;
+  const [y,m,dd]=d.split('-').map(Number);
+  return {start:new Date(y,m-1,dd,START_H,START_M), end:new Date(y,m-1,dd,END_H,END_M), day:new Date(y,m-1,dd)};
+}
+function shift(b,h){ return new Date(b.getTime()+h*3600*1000); }
+function addDays(b,n){ const d=new Date(b.getTime()); d.setDate(d.getDate()+n); return d; }
+function fmt(dt,y){ const hh=String(dt.getHours()).padStart(2,'0'), mm=String(dt.getMinutes()).padStart(2,'0');
+  return (y?dt.getFullYear()+'/':'')+`${dt.getMonth()+1}/${dt.getDate()}（${WD[dt.getDay()]}）${hh}:${mm}`; }
+function fmtD(dt,y){ return (y?dt.getFullYear()+'/':'')+`${dt.getMonth()+1}/${dt.getDate()}（${WD[dt.getDay()]}）`; }
+function durTxt(h){
+  if(h==null) return '';
+  if(h%24===0 && h>=24) return `${h/24} 天`;
+  return `${h} 小時`;
+}
+function rangeTxt(a,b){
+  if(a%24===0 && b%24===0 && a>=24 && b>=24) return `${a/24}–${b/24} 天`;
+  if(a<24 && b<24) return `${a}–${b} 小時`;
+  return `${durTxt(a)} 到 ${durTxt(b)}`;
+}
+/* 最後一劑時刻：天數型存成當日 23:59，顯示時只給日期 */
+function fmtAbs(dt){ return (dt.getHours()===23 && dt.getMinutes()===59) ? fmtD(dt) : fmt(dt); }
+
+/* 停藥 → {items:[{k,v,n,cls}], abs（最後一劑允許時刻，越早越保守）, kind, notes[]} */
+function stopBlock(spec, A){
+  if(!spec) return {items:[{v:'—'}], abs:null, kind:'unknown', notes:[]};
+  const k = spec.kind || 'time', notes = spec.note ? [spec.note] : [];
+  if(k==='none')     return {items:[{k:'停藥', v:spec.text, cls:'go flat'}], abs:null, kind:k, notes};
+  if(k==='continue') return {items:[{k:'停藥', v:spec.text, cls:'go flat'}], abs:null, kind:k, notes};
+  if(k==='contra')   return {items:[], contra:spec.text, abs:null, kind:k, notes};
+  if(k==='unknown')  return {items:[{k:'停藥', v:spec.text, cls:'flat'}], abs:null, kind:k, notes};
+
+  if(spec.d!=null){
+    const last=addDays(A.day, -(spec.d+1)), first=addDays(A.day, -spec.d);
+    const abs=new Date(last.getFullYear(), last.getMonth(), last.getDate(), 23, 59);
+    if(spec.dShort!=null) notes.push(`原始建議為 ${spec.dShort}–${spec.d} 天，本工具取最保守的 ${spec.d} 天（若採 ${spec.dShort} 天，最後一劑為 ${fmtD(addDays(A.day,-(spec.dShort+1)))}）`);
+    return {abs, kind:'time', notes, items:[
+      {k:'最後一劑', v:fmtD(last),  n:'這天整天仍可服用', cls:'stop'},
+      {k:'起停藥',   v:fmtD(first), n:`共停 ${spec.d} 天（手術當天不算）`, cls:'stop'}
+    ]};
+  }
+  const abs=shift(A.start, -spec.h);
+  if(spec.hShort!=null) notes.push(`原始建議為 ${rangeTxt(spec.hShort,spec.h)}，本工具取最保守的 ${durTxt(spec.h)}（若採 ${durTxt(spec.hShort)}，則為 ${fmt(shift(A.start,-spec.hShort))}）`);
+  return {abs, kind:'time', notes, items:[
+    {k:'最後一劑', v:fmt(abs), n:`此時刻之後停藥（術前 ${durTxt(spec.h)}）`, cls:'stop'}
+  ]};
+}
+/* 復藥 → 只顯示起始（h:0 且有上限者顯示期限） */
+function resumeBlock(spec, anchor){
+  if(!spec) return {items:[{v:'—'}], abs:null, kind:'unknown', notes:[]};
+  const k = spec.kind || 'time', notes = spec.note ? [spec.note] : [];
+  if(k==='none')    return {items:[{k:'可恢復用藥', v:spec.text, cls:'go flat'}], abs:anchor, kind:k, notes};
+  if(k==='contra')  return {items:[], contra:spec.text, abs:null, kind:k, notes};
+  if(k==='unknown') return {items:[{k:'可恢復用藥', v:spec.text, cls:'flat'}], abs:null, kind:k, notes};
+  const a=shift(anchor, spec.h);
+  if(spec.h===0 && spec.hMax!=null){
+    return {abs:a, kind:'time', notes, items:[
+      {k:'可恢復用藥', v:'止血良好後即可', n:`最晚不要晚於 ${fmt(shift(anchor,spec.hMax))}`, cls:'go flat'}]};
+  }
+  return {abs:a, kind:'time', notes, items:[
+    {k:'可恢復用藥', v:fmt(a), n:'起', cls:'go'}]};
+}
+
+/* ===================== 繪製 ===================== */
+function bigItems(items){
+  return '<div class="fgrid">'+items.map(it=>
+    `<div class="fbox ${it.cls||''}">${it.k?`<div class="fk">${it.k}</div>`:''}<div class="fv">${it.v}</div>${it.n?`<div class="fn">${it.n}</div>`:''}</div>`
+  ).join('')+'</div>';
+}
+function lineItems(b){
+  if(b.contra) return `<span style="color:#b02020;font-weight:700">⛔ ${b.contra}</span>`;
+  return b.items.map(it=>`${it.k?it.k+' ':''}<b>${it.v}</b>${it.n?` <span style="color:#66717f">${it.n}</span>`:''}`).join('　│　');
+}
+
+function buildPick(){
+  const sel=Object.keys(S.selected).length;
+  if(sel && !S.chipsOpen){
+    $('pickArea').innerHTML=`<button class="tog" id="openChips">＋ 加藥／改藥</button>`;
+    $('openChips').onclick=()=>{ S.chipsOpen=true; S.userOpened=true; render(); };
+    return;
+  }
+  let html=`<input type="text" id="search" placeholder="輸入藥名關鍵字過濾，例如 plavix / 拜瑞妥 / api" style="width:100%;max-width:420px;margin-bottom:6px" value="${S.q.replace(/"/g,'&quot;')}">`;
+  if(sel) html+=` <button class="tog" id="closeChips" style="margin-left:8px">收合 ▴</button>`;
+  const q=S.q.trim().toLowerCase();
+  CAT_ORDER.forEach(c=>{
+    const list=DRUGS.filter(d=>d.cat===c).filter(d=>!q||(dname(d)+' '+(d.alias||'')).toLowerCase().includes(q));
+    if(!list.length) return;
+    html+=`<div class="catlab">${c}</div><div class="chips">`;
+    list.forEach(d=>{ html+=`<button class="chip${S.selected[d.id]!==undefined?' on':''}" data-drug="${d.id}">${dname(d)}</button>`; });
+    html+='</div>';
+  });
+  $('pickArea').innerHTML=html;
+  const s=$('search');
+  s.oninput=()=>{ S.q=s.value; buildPick(); const n=$('search'); n.focus(); n.setSelectionRange(n.value.length,n.value.length); };
+  $('pickArea').querySelectorAll('.chip').forEach(b=>b.onclick=()=>toggleDrug(b.dataset.drug));
+  if($('closeChips')) $('closeChips').onclick=()=>{ S.chipsOpen=false; render(); };
+}
+function toggleDrug(id){
+  if(S.selected[id]!==undefined) delete S.selected[id];
+  else { S.selected[id]=DRUGS.find(x=>x.id===id).variants[0].id; if(!S.userOpened) S.chipsOpen=false; }
+  if(!Object.keys(S.selected).length){ S.chipsOpen=true; S.userOpened=false; }
+  render();
+}
+function buildSelected(){
+  const ids=Object.keys(S.selected);
+  if(!ids.length){ $('selArea').innerHTML=''; return; }
+  let html='';
+  ids.forEach(id=>{
+    const d=DRUGS.find(x=>x.id===id);
+    html+=`<div class="sel"><div class="top"><span class="nm">${dname(d)}</span><button class="rm" data-drug="${d.id}">移除</button></div>`;
+    if(d.warn) html+=`<div class="box red" style="margin:8px 0 0">${d.warn}</div>`;
+    if(d.variants.length>1||d.variants[0].label){
+      html+='<div class="vars">';
+      d.variants.forEach(v=>{ html+=`<button class="var${S.selected[id]===v.id?' on':''}" data-drug="${d.id}" data-var="${v.id}">${v.label||'標準'}${v.desc?`<small>${v.desc}</small>`:''}</button>`; });
+      html+='</div>';
+    }
+    html+='</div>';
+  });
+  $('selArea').innerHTML=html;
+  $('selArea').querySelectorAll('.rm').forEach(b=>b.onclick=()=>toggleDrug(b.dataset.drug));
+  $('selArea').querySelectorAll('.var').forEach(b=>b.onclick=()=>{ S.selected[b.dataset.drug]=b.dataset.var; render(); });
+}
+function buildPatient(){
+  const ids=Object.keys(S.selected);
+  const nR=ids.some(id=>DRUGS.find(x=>x.id===id).needCrCl);
+  const nI=ids.some(id=>DRUGS.find(x=>x.id===id).needINR);
+  const nA=ids.some(id=>DRUGS.find(x=>x.id===id).needAge);
+  $('ptCard').style.display=(nR||nI)?'':'none';
+  $('ptRenal').style.display=nR?'':'none';
+  $('ptInr').style.display=nI?'':'none';
+  if(!nR&&!nI){ $('needTag').textContent=''; return; }
+  const c=ctx(), miss=[];
+  if(nR&&c.crcl==null) miss.push('腎功能');
+  if(nI&&c.inr==null)  miss.push('INR');
+  if(nA&&c.age==null)  miss.push('年齡');
+  $('needTag').innerHTML=miss.length
+    ? `　← 需要 <b>${miss.join('、')}</b>；未填時一律取最保守（最長）的等待時間`
+    : '　✅ 需要的欄位都填好了';
+  let t='填年齡／體重／性別／Cr 會自動以 Cockcroft-Gault 算 CrCl；已有檢驗報告值就直接填最右邊那格。';
+  if(c.auto!=null) t=`✅ 自動計算 CrCl ≈ <b>${c.crcl} mL/min</b>（${S.sex==='F'?'女性已 ×0.85':'男性'}）`;
+  else if(numOr($('crcl').value)!=null) t=`✅ 使用你填入的 CrCl = <b>${numOr($('crcl').value)} mL/min</b>`;
+  $('crclNote').innerHTML=t;
+}
+function buildRiskNote(){
+  const r=RISK_INFO[S.risk];
+  $('riskNote').innerHTML=`<div class="risknote ${r.cls}"><b>${r.t}</b>${r.d}</div>`;
+}
+
+function render(){
+  buildRiskNote(); buildPick(); buildSelected(); buildPatient();
+  const c=ctx(), A=anchors(), na=$('neuraxial').checked;
+  const ids=Object.keys(S.selected), area=$('resArea');
+  if(!ids.length){ area.innerHTML='<div class="empty">請先在步驟 2 選擇藥物。</div>'; return; }
+  if(!A){ area.innerHTML='<div class="empty">請先在步驟 1 選擇<b>手術日期</b>。</div>'; return; }
+
+  const cards=[]; let earliest=null, eName='', latest=null, lName='', anyContra=false;
+
+  ids.forEach(id=>{
+    const d=DRUGS.find(x=>x.id===id);
+    const v=d.variants.find(x=>x.id===S.selected[id])||d.variants[0];
+    const rk=(S.risk==='high')?'High':'Low';
+    const sb=stopBlock(res(v.surgery['stop'+rk],c), A);
+    const rb=resumeBlock(res(v.surgery['resume'+rk],c), A.end);
+    if(sb.kind==='continue'||sb.kind==='none'){ rb.items=[{k:'可恢復用藥', v:'未停藥，不需另訂', cls:'flat'}]; rb.abs=null; rb.kind='unknown'; rb.notes=[]; }
+    const nb=na?stopBlock(res(v.neuraxial.stop,c), A):null;
+    const nrb=na?resumeBlock(res(v.neuraxial.resume,c), A.start):null;
+
+    let fin;
+    if(!na) fin={stop:sb, resume:rb, src:'手術'};
+    else if(nb.kind==='contra'){ fin={contra:nb.contra}; anyContra=true; }
+    else{
+      if(sb.abs&&nb.abs) fin=(nb.abs<=sb.abs)?{stop:nb, src:'半麻'}:{stop:sb, src:'手術'};
+      else if(nb.abs)    fin={stop:nb, src:'半麻'};
+      else               fin={stop:sb, src:'手術'};
+      const cd=[rb,nrb].filter(x=>x&&x.abs);
+      if(cd.length){ cd.sort((a,b)=>b.abs-a.abs); fin.resume=cd[0]; fin.rsrc=(cd[0]===nrb?'半麻':'手術'); }
+      else { fin.resume=(fin.src==='半麻'&&nrb)?nrb:rb; fin.rsrc=fin.src; }
+    }
+
+    if(!fin.contra){
+      if(fin.stop.abs && (!earliest||fin.stop.abs<earliest)){ earliest=fin.stop.abs; eName=dname(d); }
+      if(fin.resume&&fin.resume.abs && (!latest||fin.resume.abs>latest)){ latest=fin.resume.abs; lName=dname(d); }
+    }
+
+    let h=`<div class="res"><div class="rh"><span style="font-weight:700;font-size:15px">${dname(d)}${v.label?' — '+v.label:''}</span>`;
+    h+=`<span>${(S.risk==='high')?'高出血風險手術':'中低出血風險手術'} │ ${na?'半麻／深層阻斷':'全身麻醉'}</span></div><div class="body">`;
+    if(fin.contra){
+      h+=`<div class="contra">⛔ ${fin.contra}</div><div class="notes"><div>請改採全身麻醉，或先測藥物濃度確認無殘餘活性。</div></div>`;
+    }else{
+      h+=bigItems(fin.stop.items.concat(fin.resume?fin.resume.items:[]));
+      const ns=(fin.stop.notes||[]).concat(fin.resume?(fin.resume.notes||[]):[]);
+      if(na) ns.unshift(`停藥採用<b>${fin.src}</b>規範、復藥採用<b>${fin.rsrc}</b>規範（兩者取較保守）`);
+      if(d.foot) ns.push(d.foot);
+      if(ns.length) h+=`<div class="notes">${ns.map(x=>`<div>※ ${x}</div>`).join('')}</div>`;
+    }
+    /* 依據摺疊 */
+    h+=`<details class="why"><summary>▸ 看依據</summary><div class="in">`;
+    h+=`<div class="r"><b>手術本身</b><br>${lineItems(sb)}<br>${lineItems(rb)}</div>`;
+    if(na){
+      h+=`<div class="r"><b>半麻／深層阻斷</b><br>${lineItems(nb)}<br>${lineItems(nrb)}</div>`;
+      if(v.neuraxial.catheter) h+=`<div class="r"><b>導管留置</b><br>${v.neuraxial.catheter}</div>`;
+      if(v.neuraxial.extra)    h+=`<div class="r">${v.neuraxial.extra}</div>`;
+    }
+    h+=`</div></details></div></div>`;
+    cards.push(h);
+  });
+
+  let html='';
+  if(ids.length>1 && (earliest||latest)){
+    html+=`<div class="sum"><div class="t">多重用藥總結</div>`;
+    if(earliest) html+=`<div class="l">最早要停的是 <b>${eName}</b> —— 最後一劑 <b>${fmtAbs(earliest)}</b></div>`;
+    if(latest)   html+=`<div class="l">最晚才能恢復的是 <b>${lName}</b> —— <b>${fmt(latest)}</b> 起</div>`;
+    if(anyContra) html+=`<div class="l" style="color:#b02020"><b>⛔ 其中有藥物建議不執行半麻／深層阻斷，請看下方卡片</b></div>`;
+    html+=`</div>`;
+  }
+  html+=cards.join('');
+  html+=`<div class="box red">是否停藥須同時衡量<b>停藥後的栓塞風險</b> —— 近半年內導管手術、機械瓣膜、3 個月內瓣膜置換／修補、雙線抗血小板、2 週內中風、3 個月內顱內外支架者，請先<b>會診處方醫師</b>。</div>`;
+  area.innerHTML=html;
+}
+
+/* ===================== 複製 ===================== */
+function txt(b){
+  if(b.contra) return '⛔ '+b.contra;
+  return b.items.map(it=>(it.k?it.k+' ':'')+it.v+(it.n?'（'+it.n+'）':'')).join('；');
+}
+function copyText(){
+  const c=ctx(), A=anchors(), na=$('neuraxial').checked, ids=Object.keys(S.selected);
+  if(!A||!ids.length){ alert('請先選手術日期與藥物。'); return; }
+  let t='【抗凝血停復藥建議】\n';
+  t+=`手術日期：${fmtD(A.day,true)}　出血風險：${(S.risk==='high')?'高出血風險手術':'中低出血風險手術'}　麻醉：${na?'半身麻醉／硬脊膜外／深層阻斷':'全身麻醉'}\n`;
+  const pt=[];
+  if(c.age!=null)pt.push(`年齡 ${c.age}`); if(c.wt!=null)pt.push(`體重 ${c.wt} kg`);
+  if(c.cr!=null)pt.push(`Cr ${c.cr}`); if(c.crcl!=null)pt.push(`CrCl ${c.crcl} mL/min${c.auto!=null?'（估算）':''}`);
+  if(c.inr!=null)pt.push(`INR ${c.inr}`);
+  if(pt.length) t+=`病人：${pt.join('、')}\n`;
+  t+='\n';
+  ids.forEach(id=>{
+    const d=DRUGS.find(x=>x.id===id);
+    const v=d.variants.find(x=>x.id===S.selected[id])||d.variants[0];
+    const rk=(S.risk==='high')?'High':'Low';
+    const sb=stopBlock(res(v.surgery['stop'+rk],c), A);
+    const rb=resumeBlock(res(v.surgery['resume'+rk],c), A.end);
+    if(sb.kind==='continue'||sb.kind==='none'){ rb.items=[{k:'可恢復用藥', v:'未停藥，不需另訂'}]; rb.abs=null; rb.notes=[]; }
+    t+=`■ ${dname(d)}${v.label?' '+v.label:''}\n`;
+    if(!na){
+      t+=`  ${txt(sb)}\n  ${txt(rb)}\n`;
+      (sb.notes||[]).concat(rb.notes||[]).forEach(n=>t+=`  ※ ${n.replace(/<[^>]+>/g,'')}\n`);
+    }else{
+      const nb=stopBlock(res(v.neuraxial.stop,c), A), nrb=resumeBlock(res(v.neuraxial.resume,c), A.start);
+      if(nb.kind==='contra'){ t+=`  ⛔ 建議不執行半麻／深層阻斷：${nb.contra}\n`; }
+      else{
+        const useN = nb.abs && (!sb.abs || nb.abs<=sb.abs);
+        const fs = useN?nb:sb;
+        const cd=[rb,nrb].filter(x=>x&&x.abs);
+        let fr,frs;
+        if(cd.length){ cd.sort((a,b)=>b.abs-a.abs); fr=cd[0]; frs=(cd[0]===nrb?'半麻':'手術'); }
+        else { fr=(useN&&nrb)?nrb:rb; frs=useN?'半麻':'手術'; }
+        t+=`  ${txt(fs)}　［採用${useN?'半麻':'手術'}規範］\n`;
+        t+=`  ${txt(fr)}　［採用${frs}規範］\n`;
+        (fs.notes||[]).concat(fr.notes||[]).forEach(n=>t+=`  ※ ${n.replace(/<[^>]+>/g,'')}\n`);
+        if(v.neuraxial.catheter) t+=`  ・導管留置：${v.neuraxial.catheter}\n`;
+      }
+    }
+    if(d.foot) t+=`  ※ ${d.foot.replace(/&lt;/g,'<')}\n`;
+    t+='\n';
+  });
+  t+='※ 天數型停藥手術當天不算；範圍值取最保守端；小時型以手術當天 08:00 麻醉開始、12:00 止血良好估算。\n';
+  t+='※ 以上為最短等待時間，高齡／腎功能不全／多重抗凝併用／血性穿刺時應再延長。臨床決策以主責醫師判斷為準。\n';
+  navigator.clipboard.writeText(t).then(
+    ()=>{ const b=$('copyBtn'), o=b.textContent; b.textContent='✅ 已複製'; setTimeout(()=>b.textContent=o,1600); },
+    ()=>{ window.prompt('自動複製失敗，請手動複製（Ctrl+C）：', t); }
+  );
+}
+
+/* ===================== 事件 ===================== */
+$('riskSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  S.risk=b.dataset.v;
+  $('riskSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  render();
+});
+$('sexSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  S.sex=b.dataset.v;
+  $('sexSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  render();
+});
+$('neuraxial').onchange=()=>{ $('naChk').classList.toggle('on',$('neuraxial').checked); render(); };
+['opDate','age','wt','cr','crcl','inr'].forEach(i=>$(i).oninput=render);
+$('copyBtn').onclick=copyText;
+$('clearBtn').onclick=()=>{
+  S.selected={}; S.risk='high'; S.sex='M'; S.chipsOpen=true; S.userOpened=false; S.q='';
+  ['age','wt','cr','crcl','inr'].forEach(i=>$(i).value='');
+  $('neuraxial').checked=false; $('naChk').classList.remove('on');
+  $('riskSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.v==='high'));
+  $('sexSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.v==='M'));
+  render();
+};
+(function init(){
+  const n=new Date();
+  $('opDate').value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+  render();
+})();
+</script>
+</body>
+</html>
