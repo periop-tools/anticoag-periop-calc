@@ -186,7 +186,7 @@ details.spec summary{font-size:12.5px;color:var(--accent);cursor:pointer;user-se
   <b>早上 8:00 開始麻醉／置針、中午 12:00 結束並止血良好</b>估算。要打半麻／深層阻斷時，取兩者<b>較長者</b>。<br>
   <b>所有時間為最短等待時間</b>；高齡、腎功能不全、多重抗凝併用、血性穿刺時應再延長。是否停藥須同時衡量停藥後的栓塞風險。
   本工具為臨床輔助，<b>所有臨床決策仍以主責醫師之判斷為準</b>。<br>
-  <span style="color:#98a1ac">版本 2026-08-07b　│　桌面與雲端資料夾各有一份，版本日期應相同；不同時以雲端資料夾那份為準。</span>
+  <span style="color:#98a1ac">版本 2026-08-19　│　桌面與雲端資料夾各有一份，版本日期應相同；不同時以雲端資料夾那份為準。</span>
   </p>
 </div>
 
@@ -716,6 +716,28 @@ function buildRiskNote(){
   $('riskNote').innerHTML=`<div class="risknote ${r.cls}"><b>${r.t}</b>${r.d}</div>`;
 }
 
+function computeFinal(d, v, c, A, na){
+  const rk=(S.risk==='high')?'High':'Low';
+  const sb=stopBlock(res(v.surgery['stop'+rk],c), A);
+  const rb=resumeBlock(res(v.surgery['resume'+rk],c), A.end);
+  if(sb.kind==='continue'||sb.kind==='none'){ rb.items=[{k:'可恢復用藥', v:'未停藥，不需另訂', cls:'flat'}]; rb.abs=null; rb.kind='unknown'; rb.notes=[]; }
+  const nb=na?stopBlock(res(v.neuraxial.stop,c), A):null;
+  const nrb=na?resumeBlock(res(v.neuraxial.resume,c), A.start):null;
+  let fin;
+  if(!na) fin={stop:sb, resume:rb, src:'手術', rsrc:'手術'};
+  else if(nb.kind==='contra') fin={contra:nb.contra};
+  else{
+    if(sb.abs&&nb.abs) fin=(nb.abs<=sb.abs)?{stop:nb, src:'半麻'}:{stop:sb, src:'手術'};
+    else if(nb.abs)    fin={stop:nb, src:'半麻'};
+    else               fin={stop:sb, src:'手術'};
+    const cd=[rb,nrb].filter(x=>x&&x.abs);
+    if(cd.length){ cd.sort((a,b)=>b.abs-a.abs); fin.resume=cd[0]; fin.rsrc=(cd[0]===nrb?'半麻':'手術'); }
+    else { fin.resume=(fin.src==='半麻'&&nrb)?nrb:rb; fin.rsrc=fin.src; }
+  }
+  fin.sb=sb; fin.rb=rb; fin.nb=nb; fin.nrb=nrb;
+  return fin;
+}
+
 function render(){
   buildRiskNote(); buildPick(); buildSelected(); buildPatient();
   const c=ctx(), A=anchors(), na=$('neuraxial').checked;
@@ -728,24 +750,9 @@ function render(){
   ids.forEach(id=>{
     const d=DRUGS.find(x=>x.id===id);
     const v=d.variants.find(x=>x.id===S.selected[id])||d.variants[0];
-    const rk=(S.risk==='high')?'High':'Low';
-    const sb=stopBlock(res(v.surgery['stop'+rk],c), A);
-    const rb=resumeBlock(res(v.surgery['resume'+rk],c), A.end);
-    if(sb.kind==='continue'||sb.kind==='none'){ rb.items=[{k:'可恢復用藥', v:'未停藥，不需另訂', cls:'flat'}]; rb.abs=null; rb.kind='unknown'; rb.notes=[]; }
-    const nb=na?stopBlock(res(v.neuraxial.stop,c), A):null;
-    const nrb=na?resumeBlock(res(v.neuraxial.resume,c), A.start):null;
-
-    let fin;
-    if(!na) fin={stop:sb, resume:rb, src:'手術'};
-    else if(nb.kind==='contra'){ fin={contra:nb.contra}; anyContra=true; }
-    else{
-      if(sb.abs&&nb.abs) fin=(nb.abs<=sb.abs)?{stop:nb, src:'半麻'}:{stop:sb, src:'手術'};
-      else if(nb.abs)    fin={stop:nb, src:'半麻'};
-      else               fin={stop:sb, src:'手術'};
-      const cd=[rb,nrb].filter(x=>x&&x.abs);
-      if(cd.length){ cd.sort((a,b)=>b.abs-a.abs); fin.resume=cd[0]; fin.rsrc=(cd[0]===nrb?'半麻':'手術'); }
-      else { fin.resume=(fin.src==='半麻'&&nrb)?nrb:rb; fin.rsrc=fin.src; }
-    }
+    const fin=computeFinal(d, v, c, A, na);
+    const sb=fin.sb, rb=fin.rb, nb=fin.nb, nrb=fin.nrb;
+    if(fin.contra) anyContra=true;
 
     if(!fin.contra){
       if(fin.stop.abs && (!earliest||fin.stop.abs<earliest)){ earliest=fin.stop.abs; eName=dname(d); }
@@ -788,54 +795,37 @@ function render(){
   area.innerHTML=html;
 }
 
-/* ===================== 複製 ===================== */
-function txt(b){
-  if(b.contra) return '⛔ '+b.contra;
-  return b.items.map(it=>(it.k?it.k+' ':'')+it.v+(it.n?'（'+it.n+'）':'')).join('；');
+/* ===================== 複製（只給兩句話） ===================== */
+function shortStop(fin){
+  if(fin.contra) return '建議不執行半麻／深層阻斷';
+  const b=fin.stop, it=b.items[0]||{};
+  if(b.kind==='none'||b.kind==='continue') return '不需停藥';
+  if(!b.abs) return it.v||'—';
+  return fmtAbs(b.abs);
+}
+function shortResume(fin){
+  if(fin.contra) return null;
+  const b=fin.resume; if(!b) return null;
+  const it=b.items[0]||{};
+  if(b.kind==='none'||b.kind==='unknown'||!b.abs) return it.v||'—';
+  if(it.n==='起') return fmt(b.abs)+' 起';
+  return it.v+(it.n?'（'+it.n+'）':'');
 }
 function copyText(){
   const c=ctx(), A=anchors(), na=$('neuraxial').checked, ids=Object.keys(S.selected);
   if(!A||!ids.length){ alert('請先選手術日期與藥物。'); return; }
-  let t='【抗凝血停復藥建議】\n';
-  t+=`手術日期：${fmtD(A.day,true)}　出血風險：${(S.risk==='high')?'高出血風險手術':'中低出血風險手術'}　麻醉：${na?'半身麻醉／硬脊膜外／深層阻斷':'全身麻醉'}\n`;
-  const pt=[];
-  if(c.age!=null)pt.push(`年齡 ${c.age}`); if(c.wt!=null)pt.push(`體重 ${c.wt} kg`);
-  if(c.cr!=null)pt.push(`Cr ${c.cr}`); if(c.crcl!=null)pt.push(`CrCl ${c.crcl} mL/min${c.auto!=null?'（估算）':''}`);
-  if(c.inr!=null)pt.push(`INR ${c.inr}`);
-  if(pt.length) t+=`病人：${pt.join('、')}\n`;
-  t+='\n';
+  const stops=[], resumes=[];
   ids.forEach(id=>{
     const d=DRUGS.find(x=>x.id===id);
     const v=d.variants.find(x=>x.id===S.selected[id])||d.variants[0];
-    const rk=(S.risk==='high')?'High':'Low';
-    const sb=stopBlock(res(v.surgery['stop'+rk],c), A);
-    const rb=resumeBlock(res(v.surgery['resume'+rk],c), A.end);
-    if(sb.kind==='continue'||sb.kind==='none'){ rb.items=[{k:'可恢復用藥', v:'未停藥，不需另訂'}]; rb.abs=null; rb.notes=[]; }
-    t+=`■ ${dname(d)}${v.label?' '+v.label:''}\n`;
-    if(!na){
-      t+=`  ${txt(sb)}\n  ${txt(rb)}\n`;
-      (sb.notes||[]).concat(rb.notes||[]).forEach(n=>t+=`  ※ ${n.replace(/<[^>]+>/g,'')}\n`);
-    }else{
-      const nb=stopBlock(res(v.neuraxial.stop,c), A), nrb=resumeBlock(res(v.neuraxial.resume,c), A.start);
-      if(nb.kind==='contra'){ t+=`  ⛔ 建議不執行半麻／深層阻斷：${nb.contra}\n`; }
-      else{
-        const useN = nb.abs && (!sb.abs || nb.abs<=sb.abs);
-        const fs = useN?nb:sb;
-        const cd=[rb,nrb].filter(x=>x&&x.abs);
-        let fr,frs;
-        if(cd.length){ cd.sort((a,b)=>b.abs-a.abs); fr=cd[0]; frs=(cd[0]===nrb?'半麻':'手術'); }
-        else { fr=(useN&&nrb)?nrb:rb; frs=useN?'半麻':'手術'; }
-        t+=`  ${txt(fs)}　［採用${useN?'半麻':'手術'}規範］\n`;
-        t+=`  ${txt(fr)}　［採用${frs}規範］\n`;
-        (fs.notes||[]).concat(fr.notes||[]).forEach(n=>t+=`  ※ ${n.replace(/<[^>]+>/g,'')}\n`);
-        if(v.neuraxial.catheter) t+=`  ・導管留置：${v.neuraxial.catheter}\n`;
-      }
-    }
-    if(d.foot) t+=`  ※ ${d.foot.replace(/&lt;/g,'<')}\n`;
-    t+='\n';
+    const nm=dname(d)+(v.label?' '+v.label:'');
+    const fin=computeFinal(d, v, c, A, na);
+    stops.push(nm+' '+shortStop(fin));
+    const r=shortResume(fin);
+    if(r) resumes.push(nm+' '+r);
   });
-  t+='※ 天數型停藥手術當天不算；範圍值取最保守端；小時型以手術當天 08:00 麻醉開始、12:00 止血良好估算。\n';
-  t+='※ 以上為最短等待時間，高齡／腎功能不全／多重抗凝併用／血性穿刺時應再延長。臨床決策以主責醫師判斷為準。\n';
+  let t='最後一劑：'+stops.join('；')+'。\n';
+  t+=resumes.length ? '可恢復用藥：'+resumes.join('；')+'。' : '可恢復用藥：請依臨床判斷。';
   navigator.clipboard.writeText(t).then(
     ()=>{ const b=$('copyBtn'), o=b.textContent; b.textContent='✅ 已複製'; setTimeout(()=>b.textContent=o,1600); },
     ()=>{ window.prompt('自動複製失敗，請手動複製（Ctrl+C）：', t); }
