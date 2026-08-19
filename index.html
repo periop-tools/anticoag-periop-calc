@@ -818,7 +818,7 @@ function copyText(){
   ids.forEach(id=>{
     const d=DRUGS.find(x=>x.id===id);
     const v=d.variants.find(x=>x.id===S.selected[id])||d.variants[0];
-    const nm=dname(d)+(v.label?' '+v.label:'');
+    const nm=d.name+(v.label?' '+v.label:'');   /* 複製到病歷只用學名，不帶商品名 */
     const fin=computeFinal(d, v, c, A, na);
     stops.push(nm+' '+shortStop(fin));
     const r=shortResume(fin);
