@@ -350,7 +350,7 @@ const DRUGS = [
 {
   id:'edoxaban', name:'Edoxaban', brand:'Lixiana', alias:'edoxaban lixiana 里先安', cat:'DOAC', needCrCl:true,
   variants:[
-    {id:'hi', label:'高劑量 30–60 mg QD', desc:'',
+    {id:'hi', label:'30–60 mg QD', desc:'',
      surgery:{stopLow:xaStopLow, stopHigh:XA_STOP_HIGH, resumeLow:XA_RES_LOW, resumeHigh:XA_RES_HIGH},
      neuraxial:{stop:{h:H(72)}, resume:{h:H(24)}, catheter:'不建議留置導管（全部 DOAC）',
                 extra:'導管留置中意外給藥：停 ≥72 小時或濃度達標'}},
@@ -552,6 +552,24 @@ const DRUGS = [
 }
 ];
 
+/* ===================== 藥單調整（與資訊室對照表一致） =====================
+   HIDE_DRUGS：院內流程用不到、不顯示在選單上的藥。資料還留在上面的 DRUGS 裡，
+               把 id 從這一行刪掉就會恢復顯示。
+   HIDE_VARIANTS：不顯示的劑量變體（Edoxaban 低劑量無核准適應症）。
+   DOSE_RANK：劑量顯示順序一律由低到高。
+   defVar：選到這個藥時預設帶入的劑量，維持排序前的第一個（＝最保守那個），
+           不因為改順序而讓預設值變得不保守。 */
+const HIDE_DRUGS    = ['cangrelor','tirofiban','abciximab','fondaparinux','dti','thrombolytic'];
+const HIDE_VARIANTS = ['edoxaban|lo'];
+const DOSE_RANK     = { vlo:0, std:0, lo:1, mid:2, hi:3 };
+for(let i=DRUGS.length-1; i>=0; i--){
+  const d = DRUGS[i];
+  if(HIDE_DRUGS.indexOf(d.id) >= 0){ DRUGS.splice(i,1); continue; }
+  d.variants = d.variants.filter(v => HIDE_VARIANTS.indexOf(d.id+'|'+v.id) < 0);
+  d.defVar = d.variants[0].id;
+  d.variants.sort((a,b) => (DOSE_RANK[a.id]||0) - (DOSE_RANK[b.id]||0));
+}
+
 /* ===================== 狀態 ===================== */
 const S = { risk:'high', sex:'M', selected:{}, chipsOpen:true, userOpened:false, q:'' };
 function dname(d){ return d.brand ? d.name+'／'+d.brand : d.name; }
@@ -667,7 +685,7 @@ function buildPick(){
 }
 function toggleDrug(id){
   if(S.selected[id]!==undefined) delete S.selected[id];
-  else { S.selected[id]=DRUGS.find(x=>x.id===id).variants[0].id; if(!S.userOpened) S.chipsOpen=false; }
+  else { const dd=DRUGS.find(x=>x.id===id); S.selected[id]=dd.defVar||dd.variants[0].id; if(!S.userOpened) S.chipsOpen=false; }
   if(!Object.keys(S.selected).length){ S.chipsOpen=true; S.userOpened=false; }
   render();
 }
